@@ -89,6 +89,15 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  --grass: oklch(0.62 0.14 145);
+  --grass-dark: oklch(0.56 0.14 145);
+  --chalk: oklch(0.97 0.01 100);
+  --skin: oklch(0.75 0.08 60);
+  --kit-0: oklch(0.6 0.02 80);
+  --kit-1: oklch(0.7 0.15 80);
+  --kit-2: oklch(0.55 0.2 25);
+  --kit-3: oklch(0.45 0.15 260);
+  --kit-4: oklch(0.7 0.13 230);
   --sidebar: oklch(0.984 0.003 247.858);
   --sidebar-foreground: oklch(0.129 0.042 264.695);
   --sidebar-primary: oklch(0.208 0.042 265.755);
@@ -163,3 +172,23 @@
   & b { color: var(--primary); margin-left: .25rem; }
 }
 @utility chip-hit { background: var(--accent); outline: 2px solid var(--foreground); }
+
+@utility pitch { background: repeating-linear-gradient(90deg, var(--grass) 0 9%, var(--grass-dark) 9% 18%); }
+.pitch-line { stroke: var(--chalk); stroke-width: 2; opacity: .7; }
+.pitch-label { fill: var(--chalk); font-size: 11px; font-family: var(--font-body); }
+.skin { fill: var(--skin); }
+.hair { fill: var(--foreground); }
+.limb { stroke: var(--foreground); stroke-width: 6; stroke-linecap: round; }
+.ball { fill: var(--chalk); stroke: var(--foreground); stroke-width: 2; }
+.kick-leg { transform-origin: 4px 156px; transform-box: view-box; animation: kick .45s ease-out both; }
+.ball-x { animation: ball-x 1.6s cubic-bezier(.2,.7,.3,1) .3s both; }
+.ball-y { animation: ball-y 1.6s linear .3s both; }
+@keyframes kick { 0% { transform: rotate(35deg); } 60% { transform: rotate(-60deg); } 100% { transform: rotate(0); } }
+@keyframes ball-x { from { transform: translateX(0); } to { transform: translateX(var(--dx)); } }
+@keyframes ball-y {
+  0% { transform: translateY(0); animation-timing-function: ease-out; }
+  45% { transform: translateY(var(--dy)); animation-timing-function: ease-in; }
+  90% { transform: translateY(0); }
+  95% { transform: translateY(calc(var(--dy) * .08)); }
+  100% { transform: translateY(0); }
+}

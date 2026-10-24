@@ -1,14 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { QUESTIONS, findAnswer, scoreFor, type Answer } from "@/lib/questions";
+import { QUESTIONS, ROUNDS, findAnswer, scoreFor, kickerFor, type Answer, type Kicker } from "@/lib/questions";
+import { KickAnimation } from "@/components/KickAnimation";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Zeldzaam — hoe obscuur is jouw antwoord?" },
-      { name: "description", content: "Quizspel: hoe zeldzamer je juiste antwoord, hoe meer punten." },
-      { property: "og:title", content: "Zeldzaam — de quiz waar obscuur wint" },
-      { property: "og:description", content: "Spanje is makkelijk. Saint Kitts en Nevis bewijst dat je het weet." },
+      { title: "Zeldzaam Voetbal — hoe obscuur is jouw speler?" },
+      { name: "description", content: "Voetbalquiz: hoe onbekender de speler die je noemt, hoe meer punten." },
+      { property: "og:title", content: "Zeldzaam Voetbal" },
+      { property: "og:description", content: "Messi noemen is makkelijk. Een onbekende speler schiet de bal 100 meter ver." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -16,14 +17,14 @@ export const Route = createFileRoute("/")({
   component: Game,
 });
 
-type Result = { input: string; answer?: Answer | undefined; points: number };
+type Result = { input: string; answer?: Answer | undefined; points: number; kicker: Kicker };
 
 function shuffle<T>(a: T[]) {
   return [...a].sort(() => Math.random() - 0.5);
 }
 
 function Game() {
-  const [order, setOrder] = useState(() => QUESTIONS.map((_, i) => i));
+  const [order, setOrder] = useState(() => QUESTIONS.map((_, i) => i).slice(0, ROUNDS));
   const [idx, setIdx] = useState(-1);
   const [input, setInput] = useState("");
   const [results, setResults] = useState<Result[]>([]);
@@ -34,7 +35,7 @@ function Game() {
   const sorted = useMemo(() => (q ? [...q.answers].sort((a, b) => b.pct - a.pct) : []), [q]);
 
   const start = () => {
-    setOrder(shuffle(QUESTIONS.map((_, i) => i)));
+    setOrder(shuffle(QUESTIONS.map((_, i) => i)).slice(0, ROUNDS));
     setResults([]);
     setRevealed(null);
     setInput("");
@@ -45,7 +46,8 @@ function Game() {
     e.preventDefault();
     if (!q || revealed || !input.trim()) return;
     const answer = findAnswer(q, input);
-    const r = { input, answer, points: scoreFor(answer) };
+    const points = scoreFor(answer);
+    const r = { input, answer, points, kicker: kickerFor(points) };
     setRevealed(r);
     setResults((p) => [...p, r]);
   };
@@ -60,7 +62,7 @@ function Game() {
     <main className="min-h-screen bg-background text-foreground font-body flex flex-col items-center px-4 py-10">
       <header className="w-full max-w-2xl flex items-baseline justify-between mb-10">
         <h1 className="font-display text-4xl tracking-tight">
-          Zeld<span className="text-primary">zaam</span>
+          Zeldzaam<span className="text-primary"> Voetbal</span>
         </h1>
         {idx >= 0 && <span className="font-display text-2xl tabular-nums">{total} pt</span>}
       </header>
@@ -68,11 +70,11 @@ function Game() {
       {idx === -1 && (
         <section className="max-w-2xl text-center space-y-6 mt-10">
           <p className="font-display text-5xl leading-tight">
-            Iedereen kent Spanje.<br />
-            <span className="text-primary">Wie kent Saint Kitts en Nevis?</span>
+            Iedereen kent Messi.<br />
+            <span className="text-primary">Wie kent Alexander Hleb?</span>
           </p>
           <p className="text-muted-foreground text-lg">
-            Je krijgt {QUESTIONS.length} vragen. Geef één antwoord per vraag. Hoe zeldzamer je juiste antwoord, hoe meer punten (max 100).
+            Een potje heeft {ROUNDS} rondes. Noem één speler per vraag. Hoe onbekender je juiste antwoord, hoe verder de bal gaat (max 100 meter) — en hoe beter de speler die trapt.
           </p>
           <button onClick={start} className="btn-game">Start</button>
         </section>
@@ -98,6 +100,7 @@ function Game() {
 
           {revealed && (
             <div className="mt-6 space-y-5 animate-in fade-in slide-in-from-bottom-2">
+              <KickAnimation key={idx} points={revealed.points} kicker={revealed.kicker} />
               {revealed.answer ? (
                 <div className="flex items-end justify-between">
                   <div>
