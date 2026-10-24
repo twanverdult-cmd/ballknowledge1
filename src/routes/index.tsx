@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
   ] }), component: Game,
 });
 
-type Result = { input: string; answer?: Answer; points: number; kicker: Kicker };
+type Result = { input: string; answer: Answer | undefined; points: number; kicker: Kicker };
 function shuffle<T>(items: T[]) {
   const result = [...items];
   for (let i = result.length - 1; i > 0; i--) {
