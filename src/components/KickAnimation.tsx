@@ -1,44 +1,24 @@
+import type { CSSProperties } from "react";
 import type { Kicker } from "@/lib/questions";
 
-const SHIRT = ["var(--kit-0)", "var(--kit-1)", "var(--kit-2)", "var(--kit-3)", "var(--kit-4)"];
-
-/** Speler trapt de bal; afstand in meters = punten. */
+/** Each point is exactly one metre, including a zero-distance miss. */
 export function KickAnimation({ points, kicker }: { points: number; kicker: Kicker }) {
-  // veld: speler op x=40, 100m = x 40..940
-  const dist = Math.max(points, 3) * 9;
-  const height = 20 + points * 1.4;
-  const belly = kicker.tier === 0;
-  return (
-    <div className="pitch rounded-xl overflow-hidden border-2 border-foreground">
-      <svg viewBox="0 0 1000 220" className="w-full h-auto block">
-        {Array.from({ length: 11 }, (_, i) => (
-          <g key={i}>
-            <line x1={40 + i * 90} x2={40 + i * 90} y1={160} y2={200} className="pitch-line" />
-            <text x={40 + i * 90} y={215} textAnchor="middle" className="pitch-label">{i * 10}</text>
-          </g>
-        ))}
-        <line x1={0} x2={1000} y1={190} y2={190} className="pitch-line" />
-        {/* speler */}
-        <g transform="translate(30 0)">
-          <circle cx={0} cy={110} r={11} className="skin" />
-          {kicker.tier === 4 && <path d="M-11 106 Q0 92 11 106" className="hair" />}
-          <ellipse cx={0} cy={belly ? 142 : 138} rx={belly ? 17 : 11} ry={20} style={{ fill: SHIRT[kicker.tier] }} />
-          <line x1={-4} y1={156} x2={-8} y2={190} className="limb" />
-          <g className="kick-leg">
-            <line x1={4} y1={156} x2={10} y2={190} className="limb" />
-          </g>
-        </g>
-        {/* bal */}
-        <g className="ball-x" style={{ ["--dx" as string]: `${dist}px` }}>
-          <g className="ball-y" style={{ ["--dy" as string]: `-${height}px` }}>
-            <circle cx={50} cy={184} r={6} className="ball" />
-          </g>
-        </g>
-      </svg>
-      <div className="flex justify-between px-4 py-2 text-sm bg-card">
-        <span>Trap door: <b>{kicker.name}</b></span>
-        <span className="tabular-nums font-bold">{points} meter</span>
-      </div>
-    </div>
-  );
+  const motion = { "--dx": `${points * 8.6}px`, "--dy": `-${18 + points * 1.1}px` } as CSSProperties;
+  return <div className={`kick-pitch kit-${kicker.tier}`} aria-label={`${kicker.name} kicks the ball ${points} metres`}>
+    <svg viewBox="0 0 1000 225" role="img" aria-label={`${points} metre kick`} shapeRendering="crispEdges">
+      <path d="M30 190h940M30 20v170M970 20v170" className="pitch-line" />
+      {Array.from({ length: 11 }, (_, i) => <g key={i}><path d={`M${80 + i * 86} 182v16`} className="pitch-line" /><text x={80 + i * 86} y={217} textAnchor="middle" className="pitch-label">{i * 10}</text></g>)}
+      <g>
+        <path d="M36 106h22v5h5v17H31v-17h5z" className="sprite-hair" />
+        <path d="M36 116h22v21H36zM41 137h12v7H41zM22 151h10v24H22z" className="sprite-skin" />
+        <path d={kicker.tier === 0 ? "M28 142h38v35H28z" : "M32 142h30v31H32z"} className="sprite-shirt" />
+        <path d="M32 171h30v11H32z" className="sprite-shorts" />
+        <path d="M33 182h10v10H33z" className="sprite-skin" /><path d="M28 190h15v6H28z" className="sprite-boot" />
+        <g className="kick-leg"><path d="M50 181h10v10H50z" className="sprite-skin" /><path d="M50 189h17v6H50z" className="sprite-boot" /></g>
+        <path d="M41 149h4v15h-4zM49 149h8v15h-8z" className="sprite-number" />
+      </g>
+      <g className="ball-x" style={motion}><g className="ball-y" style={motion}><path d="M76 178h10v3h3v10h-3v3H76v-3h-3v-10h3z" className="sprite-number" /><path d="M78 183h6v6h-6zM74 178h4v4h-4zM84 190h4v4h-4z" className="sprite-boot" /></g></g>
+    </svg>
+    <div className="kick-caption flex flex-wrap items-center justify-between gap-2 px-3 py-3 text-sm"><span className="text-muted-foreground">KICKER <b className="ml-2 text-foreground">{kicker.name}</b></span><span className="font-display text-primary">{points} M</span></div>
+  </div>;
 }
