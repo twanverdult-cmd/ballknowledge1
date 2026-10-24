@@ -16,7 +16,7 @@ export const Route = createFileRoute("/")({
   component: Game,
 });
 
-type Result = { input: string; answer?: Answer; points: number };
+type Result = { input: string; answer?: Answer | undefined; points: number };
 
 function shuffle<T>(a: T[]) {
   return [...a].sort(() => Math.random() - 0.5);
@@ -29,7 +29,7 @@ function Game() {
   const [results, setResults] = useState<Result[]>([]);
   const [revealed, setRevealed] = useState<Result | null>(null);
 
-  const q = idx >= 0 && idx < order.length ? QUESTIONS[order[idx]] : null;
+  const q = idx >= 0 && idx < order.length ? QUESTIONS[order[idx]!]! : null;
   const total = results.reduce((s, r) => s + r.points, 0);
   const sorted = useMemo(() => (q ? [...q.answers].sort((a, b) => b.pct - a.pct) : []), [q]);
 
