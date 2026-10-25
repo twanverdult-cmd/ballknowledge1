@@ -1,5 +1,6 @@
 import archive from "@/data/player-archive.json";
 import { EXTRA_QUESTIONS } from "./extra-questions";
+import { COUNTRY_NAMES, POSITION_QUESTIONS } from "./position-questions";
 
 // "pct" is an editorial estimate, never measured player answer frequency.
 export type Answer = { name: string; pct: number; aliases?: string[] };
@@ -130,6 +131,7 @@ const CURATED_QUESTIONS: Question[] = [
   },
 ];
 
+type ArchiveKey = Exclude<keyof typeof archive, "sourceNote">;
 const ARCHIVE_KEYS = ["france", "barcelona", "netherlands", "madrid", "brazil", "ajax", "goalkeepers", "germany", "liverpool"] as const;
 const RARITY_OVERRIDES: Record<string, number> = {
   "Ronaldo": 10, "Kaká": 5, "Roberto Carlos": 4, "Rivaldo": 2, "Dani Alves": 1.5,
@@ -163,8 +165,21 @@ export function normalize(s: string) {
     .trim();
 }
 
-function mergeArchive(question: Question, key: typeof ARCHIVE_KEYS[number]): Question {
-  const answers = question.answers.map(answer => ({ ...answer, aliases: [...(answer.aliases ?? []), ...(EXTRA_ALIASES[answer.name] ?? [])] }));
+// Extra categories list their stars by full name only; with thousands of archive names a bare surname
+// is rarely unique, so the curated stars also accept their own surname.
+const EXTRA_ARCHIVE: Record<string, ArchiveKey> = {
+  "Name an Argentine footballer": "argentina", "Name a Portuguese footballer": "portugal",
+  "Name a Spanish footballer": "spain", "Name an Italian footballer": "italy",
+  "Name an English footballer": "england", "Name a Belgian footballer": "belgium",
+  "Name a Croatian footballer": "croatia",
+};
+const surnameAlias = (name: string) => normalize(name).split(" ").slice(-1)[0] ?? "";
+
+function mergeArchive(question: Question, key: ArchiveKey, withSurnames = false): Question {
+  const answers = question.answers.map(answer => ({
+    ...answer,
+    aliases: [...(answer.aliases ?? []), ...(EXTRA_ALIASES[answer.name] ?? []), ...(withSurnames && !answer.aliases?.length ? [surnameAlias(answer.name)] : [])],
+  }));
   const knownNames = new Set(answers.flatMap(answer => [answer.name, ...answer.aliases].map(normalize)));
   const overrides = new Map(Object.entries(RARITY_OVERRIDES).map(([name, pct]) => [normalize(name), { name, pct }]));
   for (const name of archive[key]) {
@@ -179,10 +194,37 @@ function mergeArchive(question: Question, key: typeof ARCHIVE_KEYS[number]): Que
   return { ...question, answers: key === "ajax" ? answers.filter(answer => answer.name !== "Dmitri Shoukov") : answers };
 }
 
-export const QUESTIONS = [...CURATED_QUESTIONS.map((question, index) => {
+/** Adds fame-ordered names: the best known get a small share, the long tail the minimum. */
+function withRankedNames(question: Question, names: string[]): Question {
+  const known = new Set(question.answers.flatMap(answer => [answer.name, ...(answer.aliases ?? [])].map(normalize)));
+  const answers = [...question.answers];
+  let rank = 0;
+  for (const name of names) {
+    const key = normalize(name);
+    if (known.has(key)) continue;
+    known.add(key);
+    const surname = key.split(" ").slice(-1)[0] ?? "";
+    answers.push({ name, pct: Math.max(0.05, Math.round(1.5 * 0.985 ** rank * 100) / 100), aliases: rank < 40 && surname ? [surname] : [] });
+    rank++;
+  }
+  return { ...question, answers };
+}
+
+const BASE_QUESTIONS = [...CURATED_QUESTIONS.map((question, index) => {
   const key = ARCHIVE_KEYS[index];
   return key ? mergeArchive(question, key) : question;
-}), ...EXTRA_QUESTIONS];
+}), ...EXTRA_QUESTIONS.map(question => {
+  const key = EXTRA_ARCHIVE[question.prompt];
+  return key ? mergeArchive(question, key, true) : question;
+})];
+const NETHERLANDS = BASE_QUESTIONS.find(question => question.prompt === "Name a Netherlands international");
+
+export const QUESTIONS = [
+  ...BASE_QUESTIONS.map(question => question.prompt === "Name a Belgian footballer" ? withRankedNames(question, COUNTRY_NAMES.belgium) : question),
+  // All Dutch pros, not only internationals: the curated international list supplies the well-known rarities.
+  ...(NETHERLANDS ? [withRankedNames({ ...NETHERLANDS, prompt: "Name a Dutch footballer" }, COUNTRY_NAMES.dutch)] : []),
+  ...POSITION_QUESTIONS,
+];
 
 export function findAnswer(q: Question, input: string): Answer | undefined {
   const n = normalize(input);
@@ -204,6 +246,14 @@ export function findAnswer(q: Question, input: string): Answer | undefined {
 export function scoreFor(x: Answer | undefined): number {
   if (!x) return 0;
   return Math.max(1, Math.min(MAX_POINTS, Math.round(100 - Math.log2(x.pct * 10 + 1) * 11)));
+}
+
+/** Rarity categories from most common to rarest; the thresholds match the kicker tiers below. */
+export const RARITY_TIERS = ["HOUSEHOLD NAME", "MATCHDAY REGULAR", "SCOUT'S PICK", "HIDDEN GEM", "ONE IN A MILLION"] as const;
+export const MISS_LABEL = "OFFSIDE";
+
+export function rarityLabel(points: number): string {
+  return points <= 0 ? MISS_LABEL : RARITY_TIERS[kickerFor(points, 0).tier] ?? MISS_LABEL;
 }
 
 export type Kicker = { name: string; tier: 0 | 1 | 2 | 3 | 4 };

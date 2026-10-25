@@ -22,10 +22,20 @@ export function PixelBall({ className = "" }: { className?: string }) {
 export function PixelPitch() {
   return <div className="field-backdrop" aria-hidden="true">
     <div className="pixel-stands" />
+    <Floodlight side="left" />
+    <Floodlight side="right" />
     <svg viewBox="0 0 1200 900" preserveAspectRatio="none" className="field-markings" shapeRendering="crispEdges">
       <path d="M70 60H1130V840H70zM600 60V840M70 250H240V650H70M1130 250H960V650H1130M70 350H140V550H70M1130 350H1060V550H1130" />
       <path d="M540 350h120v20h40v40h20v80h-20v40h-40v20H540v-20h-40v-40h-20v-80h20v-40h40z" />
       <rect x="594" y="444" width="12" height="12" />
     </svg>
   </div>;
+}
+
+function Floodlight({ side }: { side: "left" | "right" }) {
+  return <svg viewBox="0 0 14 45" className={`floodlight floodlight-${side}`} shapeRendering="crispEdges">
+    <path d="M6 12h2v33H6z" fill="#1b3050" />
+    <path d="M0 0h14v10H0z" fill="#101d33" />
+    <path d="M1 1h2v2H1zM4 1h2v2H4zM7 1h2v2H7zM10 1h2v2h-2zM1 5h2v2H1zM4 5h2v2H4zM7 5h2v2H7zM10 5h2v2h-2z" fill="#e8f1ff" />
+  </svg>;
 }
