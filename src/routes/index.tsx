@@ -1,34 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowRight, RotateCcw, Trophy } from "lucide-react";
 import { QUESTIONS, ROUNDS, findAnswer, scoreFor, kickerFor, type Answer, type Kicker } from "@/lib/questions";
 import { KickAnimation } from "@/components/KickAnimation";
 import { PixelBall, PixelPitch, PixelPlayer } from "@/components/PixelPitch";
 import { Button } from "@/components/ui/button";
+import { drawMatch } from "@/lib/question-deck";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
-    { title: "Rare Football — The Pixel Football Quiz" },
+    { title: "Ball Knowledge — The Pixel Football Quiz" },
     { name: "description", content: "Seven rounds. Name a footballer, find the rarest answer and send the ball up to 100 metres across a pixel pitch." },
-    { property: "og:title", content: "Rare Football — The Pixel Football Quiz" },
-    { property: "og:description", content: "Everyone knows Messi. How deep does your football knowledge go? Play seven rounds of Rare Football." },
+    { property: "og:title", content: "Ball Knowledge — The Pixel Football Quiz" },
+    { property: "og:description", content: "Everyone knows Messi. How deep does your football knowledge go? Play seven fresh rounds of Ball Knowledge." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ] }), component: Game,
 });
 
 type Result = { input: string; answer: Answer | undefined; points: number; kicker: Kicker };
-function shuffle<T>(items: T[]) {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const current = result[i]; const other = result[j];
-    if (current !== undefined && other !== undefined) { result[i] = other; result[j] = current; }
-  }
-  return result;
-}
 
 function Game() {
+  const deck = useRef<number[]>([]);
+  const previousMatch = useRef<number[]>([]);
   const [order, setOrder] = useState(() => QUESTIONS.map((_, i) => i).slice(0, ROUNDS));
   const [idx, setIdx] = useState(-1);
   const [input, setInput] = useState("");
@@ -39,7 +33,12 @@ function Game() {
   const total = results.reduce((sum, r) => sum + r.points, 0);
   const sorted = useMemo(() => q ? [...q.answers].sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name)) : [], [q]);
   const archiveCount = new Set(QUESTIONS.flatMap(q => q.answers.map(a => a.name))).size;
-  const start = () => { setOrder(shuffle(QUESTIONS.map((_, i) => i)).slice(0, ROUNDS)); setResults([]); setRevealed(null); setInput(""); setIdx(0); };
+  const start = () => {
+    const match = drawMatch(QUESTIONS.length, deck.current, previousMatch.current);
+    deck.current = match.remaining;
+    previousMatch.current = match.order;
+    setOrder(match.order); setResults([]); setRevealed(null); setInput(""); setIdx(0);
+  };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!q || revealed || !input.trim()) return;
@@ -52,13 +51,13 @@ function Game() {
   return <main className="game-world flex flex-col px-5 pb-5 pt-9 sm:px-10">
     <PixelPitch />
     <header className="game-header mx-auto flex w-full max-w-5xl items-center justify-between gap-3 pb-5">
-      <div className="pixel-brand"><PixelBall /><h1 className="font-display text-sm sm:text-lg">RARE <span className="text-primary">FOOTBALL</span></h1></div>
+      <div className="pixel-brand min-w-0"><PixelBall /><h1 className="font-display text-xs sm:text-lg">BALL <span className="text-primary">KNOWLEDGE</span></h1></div>
       <div className="scoreboard flex items-center gap-4 px-3 py-2 sm:px-5"><span className="text-xs text-muted-foreground">{idx < 0 ? "HIGH SCORE" : "SCORE"}</span><span className="font-display text-lg text-primary">{idx < 0 ? "700" : String(total).padStart(3, "0")}</span></div>
     </header>
 
     {idx === -1 && <section className="opening mx-auto w-full max-w-3xl text-center">
       <p className="mb-4 font-display text-xs text-accent">THE NOT-SO-OBVIOUS FOOTBALL QUIZ</p>
-      <h2 className="opening-title font-display">RARE<br /><span className="text-primary">FOOTBALL</span></h2>
+      <h2 className="opening-title font-display">BALL<br /><span className="text-primary">KNOWLEDGE</span></h2>
       <p className="mt-5 text-lg">Everyone knows Messi. <span className="text-primary">Who knows Hleb?</span></p>
       <div className="my-7 flex items-center justify-center gap-5 font-display text-xs sm:gap-8"><span>7 ROUNDS</span><span className="text-border">/</span><span>100 M MAX</span></div>
       <Button onClick={start} className="match-button">KICK OFF <ArrowRight /></Button>
@@ -89,7 +88,7 @@ function Game() {
       <ol className="mb-8 text-left">{results.map((r, i) => <li key={i} className="archive-name flex items-center justify-between gap-3 py-3"><span className="w-6 font-display text-xs text-muted-foreground">{i + 1}</span><span className="flex-1">{r.answer?.name ?? `✗ ${r.input}`}</span><span className="font-display text-primary">{r.points} M</span></li>)}</ol>
       <Button onClick={start} className="match-button"><RotateCcw />PLAY AGAIN</Button>
     </section>}
-    <footer className="match-footer mx-auto mt-auto flex w-full max-w-5xl flex-wrap justify-between gap-3 pt-4 text-xs text-muted-foreground"><span className="font-display">{archiveCount.toLocaleString("en-US")} PLAYERS · 9 CATEGORIES</span><span>Rarity scores are estimates, not live player statistics.</span></footer>
+    <footer className="match-footer mx-auto mt-auto flex w-full max-w-5xl flex-wrap justify-between gap-3 pt-4 text-xs text-muted-foreground"><span className="font-display">{archiveCount.toLocaleString("en-US")} PLAYERS · {QUESTIONS.length} CATEGORIES</span><span>Rarity scores are estimates, not live player statistics.</span></footer>
   </main>;
 }
 

@@ -1,4 +1,5 @@
 import archive from "@/data/player-archive.json";
+import { EXTRA_QUESTIONS } from "./extra-questions";
 
 // "pct" is an editorial estimate, never measured player answer frequency.
 export type Answer = { name: string; pct: number; aliases?: string[] };
@@ -178,10 +179,10 @@ function mergeArchive(question: Question, key: typeof ARCHIVE_KEYS[number]): Que
   return { ...question, answers: key === "ajax" ? answers.filter(answer => answer.name !== "Dmitri Shoukov") : answers };
 }
 
-export const QUESTIONS = CURATED_QUESTIONS.map((question, index) => {
+export const QUESTIONS = [...CURATED_QUESTIONS.map((question, index) => {
   const key = ARCHIVE_KEYS[index];
   return key ? mergeArchive(question, key) : question;
-});
+}), ...EXTRA_QUESTIONS];
 
 export function findAnswer(q: Question, input: string): Answer | undefined {
   const n = normalize(input);
