@@ -11,3 +11,4 @@
 
 - Use shared pixel pitch/sprite graphics and semantic CSS tokens throughout the game so every game state belongs to the same football-field scene.
 - Keep player archive membership browser-local with source attribution; merge archived names with curated rarity estimates and reject ambiguous surname-only answers.
+- Select matches through a session-local shuffled question deck, consuming unseen questions first and excluding the previous match on refill, so replay does not just reshuffle the same questions.

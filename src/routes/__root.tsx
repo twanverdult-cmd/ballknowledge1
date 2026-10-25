@@ -79,10 +79,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Rare Football" },
+      { title: "Ball Knowledge" },
       { name: "description", content: "The pixel football quiz where rare answers win." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Rare Football" },
+      { property: "og:title", content: "Ball Knowledge" },
       { property: "og:description", content: "The pixel football quiz where rare answers win." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
