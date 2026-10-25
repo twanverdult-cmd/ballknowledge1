@@ -1,4 +1,6 @@
-// "pct" = geschat percentage spelers dat dit antwoord zou geven (verzonnen schattingen).
+import archive from "@/data/player-archive.json";
+
+// "pct" is an editorial estimate, never measured player answer frequency.
 export type Answer = { name: string; pct: number; aliases?: string[] };
 export type Question = { prompt: string; answers: Answer[] };
 
@@ -7,9 +9,9 @@ export const MAX_POINTS = 100;
 
 const a = (name: string, pct: number, ...aliases: string[]): Answer => ({ name, pct, aliases });
 
-export const QUESTIONS: Question[] = [
+const CURATED_QUESTIONS: Question[] = [
   {
-    prompt: "Noem een Franse voetballer",
+    prompt: "Name a French footballer",
     answers: [
       a("Kylian Mbappé", 35, "mbappe", "kylian mbappe"), a("Zinedine Zidane", 15, "zidane"),
       a("Thierry Henry", 10, "henry"), a("Antoine Griezmann", 9, "griezmann"),
@@ -23,7 +25,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    prompt: "Noem een speler (ooit) van FC Barcelona",
+    prompt: "Name a player who played for FC Barcelona",
     answers: [
       a("Lionel Messi", 45, "messi"), a("Johan Cruijff", 8, "cruijff", "cruyff"), a("Ronaldinho", 7),
       a("Neymar", 6), a("Xavi", 5, "xavi hernandez"), a("Andrés Iniesta", 5, "iniesta"),
@@ -37,7 +39,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    prompt: "Noem een Nederlandse international",
+    prompt: "Name a Netherlands international",
     answers: [
       a("Virgil van Dijk", 25, "van dijk"), a("Memphis Depay", 12, "memphis", "depay"), a("Frenkie de Jong", 10, "de jong"),
       a("Arjen Robben", 8, "robben"), a("Robin van Persie", 7, "van persie"), a("Johan Cruijff", 6, "cruijff", "cruyff"),
@@ -50,7 +52,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    prompt: "Noem een speler (ooit) van Real Madrid",
+    prompt: "Name a player who played for Real Madrid",
     answers: [
       a("Cristiano Ronaldo", 40, "ronaldo", "cr7"), a("Vinícius Júnior", 8, "vinicius", "vini jr"), a("Jude Bellingham", 7, "bellingham"),
       a("Zinedine Zidane", 6, "zidane"), a("Luka Modrić", 6, "modric"), a("Kylian Mbappé", 6, "mbappe"),
@@ -63,7 +65,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    prompt: "Noem een Braziliaanse voetballer",
+    prompt: "Name a Brazilian footballer",
     answers: [
       a("Neymar", 30), a("Pelé", 18, "pele"), a("Ronaldinho", 12), a("Ronaldo", 10, "ronaldo nazario"),
       a("Kaká", 5, "kaka"), a("Vinícius Júnior", 6, "vinicius"), a("Roberto Carlos", 4), a("Romário", 2, "romario"),
@@ -74,7 +76,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    prompt: "Noem een speler (ooit) van Ajax",
+    prompt: "Name a player who played for Ajax",
     answers: [
       a("Johan Cruijff", 20, "cruijff", "cruyff"), a("Dennis Bergkamp", 7, "bergkamp"), a("Marco van Basten", 7, "van basten"),
       a("Luis Suárez", 6, "suarez"), a("Zlatan Ibrahimović", 6, "zlatan", "ibrahimovic"), a("Frenkie de Jong", 6, "de jong"),
@@ -87,7 +89,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    prompt: "Noem een keeper",
+    prompt: "Name a goalkeeper",
     answers: [
       a("Manuel Neuer", 18, "neuer"), a("Edwin van der Sar", 12, "van der sar"), a("Gianluigi Buffon", 10, "buffon"),
       a("Iker Casillas", 8, "casillas"), a("Thibaut Courtois", 8, "courtois"), a("Alisson", 5, "alisson becker"),
@@ -100,7 +102,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    prompt: "Noem een Duitse voetballer",
+    prompt: "Name a German footballer",
     answers: [
       a("Thomas Müller", 15, "muller", "muller"), a("Manuel Neuer", 12, "neuer"), a("Franz Beckenbauer", 10, "beckenbauer"),
       a("Toni Kroos", 9, "kroos"), a("Jamal Musiala", 6, "musiala"), a("Miroslav Klose", 6, "klose"),
@@ -113,7 +115,7 @@ export const QUESTIONS: Question[] = [
     ],
   },
   {
-    prompt: "Noem een speler (ooit) van Liverpool",
+    prompt: "Name a player who played for Liverpool",
     answers: [
       a("Mohamed Salah", 30, "salah"), a("Virgil van Dijk", 15, "van dijk"), a("Steven Gerrard", 12, "gerrard"),
       a("Cody Gakpo", 5, "gakpo"), a("Sadio Mané", 4, "mane"), a("Luis Suárez", 4, "suarez"), a("Fernando Torres", 3, "torres"),
@@ -127,22 +129,74 @@ export const QUESTIONS: Question[] = [
   },
 ];
 
+const ARCHIVE_KEYS = ["france", "barcelona", "netherlands", "madrid", "brazil", "ajax", "goalkeepers", "germany", "liverpool"] as const;
+const RARITY_OVERRIDES: Record<string, number> = {
+  "Ronaldo": 10, "Kaká": 5, "Roberto Carlos": 4, "Rivaldo": 2, "Dani Alves": 1.5,
+  "Gavi": 4, "Raphinha": 5, "Dani Olmo": 3, "Ferran Torres": 2, "Jules Koundé": 2,
+  "Zlatan Ibrahimović": 6, "Diego Maradona": 15, "Romário": 2, "Ronaldo Nazário": 10,
+  "Toni Kroos": 9, "Thibaut Courtois": 8, "Rodrygo": 4, "Federico Valverde": 4,
+  "Endrick": 3, "Éder Militão": 2, "David Alaba": 2, "Pepe": 3,
+  "Alexander Isak": 4, "Florian Wirtz": 3, "Hugo Ekitiké": 3, "Darwin Núñez": 3,
+  "Diogo Jota": 3, "Roberto Firmino": 3, "Andy Robertson": 3, "Andrew Robertson": 3,
+  "Désiré Doué": 3, "Bradley Barcola": 2, "Michael Olise": 3, "Warren Zaïre-Emery": 2,
+  "Gabriel Jesus": 3, "Gabriel Martinelli": 3, "Bruno Guimarães": 2, "Antony": 3,
+  "Joshua Kimmich": 4, "Leroy Sané": 3, "Serge Gnabry": 3, "Marc-André ter Stegen": 2,
+  "David de Gea": 4, "Jan Oblak": 3, "Gianluigi Donnarumma": 5, "Wojciech Szczęsny": 2,
+};
+const EXTRA_ALIASES: Record<string, string[]> = {
+  "Johan Cruijff": ["johan cruyff"], "Ruud van Nistelrooij": ["ruud van nistelrooy"],
+  "Lev Jasjin": ["lev yashin"], "Alisson": ["alisson becker"], "Ronaldo": ["ronaldo nazario", "ronaldo luiz nazario de lima"],
+  "Vinícius Júnior": ["vini", "vini jr", "vinicius junior"], "N'Golo Kanté": ["ngolo kante"],
+  "Trent Alexander-Arnold": ["trent"], "Mohamed Salah": ["mo salah"],
+};
+
 export function normalize(s: string) {
   return s
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9' -]/g, "")
+    .replace(/[’‘']/g, "")
+    .replace(/[-‐‑–]/g, " ")
+    .replace(/[^a-z0-9 ]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
 
+function mergeArchive(question: Question, key: typeof ARCHIVE_KEYS[number]): Question {
+  const answers = question.answers.map(answer => ({ ...answer, aliases: [...(answer.aliases ?? []), ...(EXTRA_ALIASES[answer.name] ?? [])] }));
+  const knownNames = new Set(answers.flatMap(answer => [answer.name, ...answer.aliases].map(normalize)));
+  const overrides = new Map(Object.entries(RARITY_OVERRIDES).map(([name, pct]) => [normalize(name), { name, pct }]));
+  for (const name of archive[key]) {
+    const normalized = normalize(name);
+    if (knownNames.has(normalized)) continue;
+    const override = overrides.get(normalized);
+    const canonicalName = override?.name ?? name;
+    answers.push({ name: canonicalName, pct: override?.pct ?? 0.2, aliases: EXTRA_ALIASES[canonicalName] ?? [] });
+    knownNames.add(normalized);
+  }
+  // Correct a previously accepted player who never made an Ajax first-team appearance.
+  return { ...question, answers: key === "ajax" ? answers.filter(answer => answer.name !== "Dmitri Shoukov") : answers };
+}
+
+export const QUESTIONS = CURATED_QUESTIONS.map((question, index) => {
+  const key = ARCHIVE_KEYS[index];
+  return key ? mergeArchive(question, key) : question;
+});
+
 export function findAnswer(q: Question, input: string): Answer | undefined {
   const n = normalize(input);
   if (!n) return undefined;
-  return q.answers.find(
-    (x) => normalize(x.name) === n || (x.aliases ?? []).some((al) => normalize(al) === n),
-  );
+  const exact = q.answers.find(x => normalize(x.name) === n);
+  if (exact) return exact;
+  const explicit = q.answers.filter(x => (x.aliases ?? []).some(alias => normalize(alias) === n));
+  if (explicit.length === 1) return explicit[0];
+  if (explicit.length > 1) return undefined;
+  // Accept a surname only when it identifies one player in this category.
+  const surname = q.answers.filter(x => {
+    const name = normalize(x.name);
+    return name.endsWith(` ${n}`);
+  });
+  return surname.length === 1 ? surname[0] : undefined;
 }
 
 /** Hoe zeldzamer, hoe meer punten: max 100, fout = 0. */
@@ -155,10 +209,9 @@ export type Kicker = { name: string; tier: 0 | 1 | 2 | 3 | 4 };
 
 /** Wie de trap neemt hangt af van de punten. */
 export function kickerFor(points: number, legendPick = Math.random()): Kicker {
-  if (points <= 0) return { name: "Ome Henk (zondag 7e elftal)", tier: 0 };
-  if (points < 30) return { name: "Ome Henk (zondag 7e elftal)", tier: 0 };
-  if (points < 55) return { name: "Een Keuken Kampioen-spits", tier: 1 };
-  if (points < 75) return { name: "Een Eredivisie-topper", tier: 2 };
-  if (points < 90) return { name: "Een Champions League-ster", tier: 3 };
+  if (points < 30) return { name: "Sunday league substitute", tier: 0 };
+  if (points < 55) return { name: "Second division striker", tier: 1 };
+  if (points < 75) return { name: "Top-flight regular", tier: 2 };
+  if (points < 90) return { name: "Champions League star", tier: 3 };
   return { name: legendPick < 0.5 ? "Lionel Messi" : "Cristiano Ronaldo", tier: 4 };
 }
