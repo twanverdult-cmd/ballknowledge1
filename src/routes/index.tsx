@@ -46,7 +46,7 @@ function Game() {
     const match = drawMatch(QUESTIONS.length, deck.current, previousMatch.current);
     deck.current = match.remaining;
     previousMatch.current = match.order;
-    setOrder(match.order); setResults([]); setRevealed(null); setInput(""); setIdx(0);
+    setOrder(match.order); setResults([]); setRevealed(null); setNotFound(null); setInput(""); setIdx(0);
   }, []);
   const beginTraining = () => transition(start);
   const playAgain = () => transition(() => setIdx(-1));
