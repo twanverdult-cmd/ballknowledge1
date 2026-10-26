@@ -8,6 +8,7 @@ import { QuestionTimer } from "@/components/QuestionTimer";
 import { PixelBall, PixelPitch, PixelPlayer } from "@/components/PixelPitch";
 import { Button } from "@/components/ui/button";
 import { drawMatch } from "@/lib/question-deck";
+import { rateAnswerWithAi } from "@/lib/ai-rarity.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/")({
   ] }), component: Game,
 });
 
-type Result = { input: string; answer: Answer | undefined; points: number; kicker: Kicker; timedOut?: boolean };
+type Result = { input: string; answer: Answer | undefined; points: number; kicker: Kicker; timedOut?: boolean; ai?: string | undefined };
 
 function Game() {
   const deck = useRef<number[]>([]);
@@ -37,6 +38,7 @@ function Game() {
   const [results, setResults] = useState<Result[]>([]);
   const [revealed, setRevealed] = useState<Result | null>(null);
   const [notFound, setNotFound] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const questionIndex = order[idx];
   const q = questionIndex === undefined ? undefined : QUESTIONS[questionIndex];
   const total = results.reduce((sum, r) => sum + r.points, 0);
@@ -50,17 +52,22 @@ function Game() {
   }, []);
   const beginTraining = () => transition(start);
   const playAgain = () => transition(() => setIdx(-1));
-  const reveal = (text: string, timedOut = false) => {
+  const reveal = (text: string, timedOut = false, ai?: { name: string; points: number; reason: string }) => {
     if (!q || revealed) return;
-    const answer = findAnswer(q, text); const points = scoreFor(answer);
-    const result = { input: text.trim(), answer, points, kicker: kickerFor(points), timedOut };
+    const answer = ai ? { name: ai.name, pct: 0 } : findAnswer(q, text); const points = ai ? ai.points : scoreFor(answer);
+    const result: Result = { input: text.trim(), answer, points, kicker: kickerFor(points), timedOut, ai: ai?.reason };
     setRevealed(result); setResults(previous => [...previous, result]);
   };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !q) return;
-    if (!findAnswer(q, input)) { setNotFound(input.trim()); setInput(""); return; }
-    setNotFound(null); reveal(input);
+    if (!input.trim() || !q || checking) return;
+    if (findAnswer(q, input)) { setNotFound(null); reveal(input); return; }
+    const text = input.trim(); setChecking(true); setNotFound(null);
+    rateAnswerWithAi({ data: { prompt: q.prompt, name: text } }).then(verdict => {
+      if ("error" in verdict) { setNotFound(text); return; }
+      if (!verdict.valid) { setNotFound(text); setInput(""); return; }
+      reveal(text, false, verdict);
+    }).catch(() => setNotFound(text)).finally(() => setChecking(false));
   };
   const next = () => transition(() => { setRevealed(null); setNotFound(null); setInput(""); setIdx(i => i + 1); });
 
@@ -90,12 +97,12 @@ function Game() {
       <form onSubmit={submit} className={`flex gap-3 ${revealed && !revealed.answer ? "reject-shake" : ""}`}>
         <label htmlFor="player-answer" className="sr-only">Footballer name</label>
         <input id="player-answer" autoFocus key={idx} value={input} disabled={Boolean(revealed)} onChange={e => setInput(e.target.value)} placeholder="Enter a footballer's name…" autoComplete="off" className="game-input text-base sm:text-lg" />
-        {!revealed && <Button type="submit" disabled={!input.trim()} className="match-button"><span className="hidden sm:inline">SHOOT</span><ArrowRight aria-label="Shoot" /></Button>}
+        {!revealed && <Button type="submit" disabled={!input.trim() || checking} className="match-button"><span className="hidden sm:inline">{checking ? "VAR CHECK…" : "SHOOT"}</span><ArrowRight aria-label="Shoot" /></Button>}
       </form>
       {revealed && <div className="mt-7 space-y-5" aria-live="polite">
         <KickAnimation key={idx} points={revealed.points} kicker={revealed.kicker} missed={!revealed.answer} />
         <div className="flex items-center justify-between gap-4"><div><span key={`badge-${idx}`} className={`rarity-badge ${tierClass(revealed.points)}`}>{rarityLabel(revealed.points)}</span><p className="mt-2 text-lg font-semibold">{revealed.answer?.name ?? (revealed.input ? `“${revealed.input}”` : "No answer")}</p><p className={revealed.answer ? "mt-1 text-sm text-muted-foreground" : "mt-1 text-sm text-destructive"}>{revealed.answer ? verdict(revealed.points) : (revealed.timedOut && !revealed.input ? "Time's up! " : "Not found for this question. ") + "The kicker swings and misses the ball. No points."}</p>
-          {revealed.answer && <p className={`mt-1 text-lg ${tierClass(revealed.points)}`}>~{formatPct(revealed.answer.pct)}% of fans would name this player</p>}</div><span key={idx} className={`score-slam shrink-0 font-display text-5xl ${tierClass(revealed.points)}`}>+{revealed.points}</span></div>
+          {revealed.answer && (revealed.ai !== undefined ? <p className={`mt-1 text-lg ${tierClass(revealed.points)}`}>AI rarity: {revealed.ai}</p> : <p className={`mt-1 text-lg ${tierClass(revealed.points)}`}>~{formatPct(revealed.answer.pct)}% of fans would name this player</p>)}</div><span key={idx} className={`score-slam shrink-0 font-display text-5xl ${tierClass(revealed.points)}`}>+{revealed.points}</span></div>
         <Button onClick={next} className="match-button rise">{idx + 1 < ROUNDS ? "NEXT ROUND" : "FINAL SCORE"}<ArrowRight /></Button>
         <details className="archive-list py-3 text-sm"><summary className="text-muted-foreground">Accepted players ({sorted.length})</summary><div className="mt-3 grid gap-x-5 sm:grid-cols-2">{sorted.map(a => <div key={a.name} className={`archive-name flex justify-between gap-3 py-2 ${a === revealed.answer ? "text-primary" : "text-foreground"}`}><span>{a.name}</span><b>{scoreFor(a)}</b></div>)}</div></details>
       </div>}
