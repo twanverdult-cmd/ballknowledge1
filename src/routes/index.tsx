@@ -57,7 +57,9 @@ function Game() {
   };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) reveal(input);
+    if (!input.trim() || !q) return;
+    if (!findAnswer(q, input)) { setNotFound(input.trim()); setInput(""); return; }
+    setNotFound(null); reveal(input);
   };
   const next = () => transition(() => { setRevealed(null); setInput(""); setIdx(i => i + 1); });
 
