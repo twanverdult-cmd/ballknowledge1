@@ -21,7 +21,7 @@ export const Route = createFileRoute("/")({
   ] }), component: Game,
 });
 
-type Result = { input: string; answer: Answer | undefined; points: number; kicker: Kicker; timedOut?: boolean; ai?: string };
+type Result = { input: string; answer: Answer | undefined; points: number; kicker: Kicker; timedOut?: boolean; ai?: string | undefined };
 
 function Game() {
   const deck = useRef<number[]>([]);
