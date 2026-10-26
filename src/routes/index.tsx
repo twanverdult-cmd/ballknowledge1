@@ -64,7 +64,7 @@ function Game() {
     if (findAnswer(q, input)) { setNotFound(null); reveal(input); return; }
     const text = input.trim(); setChecking(true); setNotFound(null);
     rateAnswerWithAi({ data: { prompt: q.prompt, name: text } }).then(verdict => {
-      if ("error" in verdict) { setNotFound(`${text}” (${verdict.error})`); return; }
+      if ("error" in verdict) { setNotFound(text); return; }
       if (!verdict.valid) { setNotFound(text); setInput(""); return; }
       reveal(text, false, verdict);
     }).catch(() => setNotFound(text)).finally(() => setChecking(false));

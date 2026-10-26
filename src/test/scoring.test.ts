@@ -40,3 +40,11 @@ describe("expanded player archive", () => {
     expect(new Set(QUESTIONS.flatMap(question => question.answers.map(answer => answer.name))).size).toBeGreaterThan(5000);
   });
 });
+
+describe("1-100 rarity scale", () => {
+  const sorted = [...q.answers].sort((a, b) => b.pct - a.pct);
+  it("most common answer scores 1", () => { expect(scoreFor(sorted[0])).toBe(1); });
+  it("the 20 least common answers score 100", () => {
+    for (const a of sorted.slice(-20)) expect(scoreFor(a)).toBe(100);
+  });
+});
