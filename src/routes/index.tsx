@@ -36,6 +36,7 @@ function Game() {
   const [input, setInput] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [revealed, setRevealed] = useState<Result | null>(null);
+  const [notFound, setNotFound] = useState<string | null>(null);
   const questionIndex = order[idx];
   const q = questionIndex === undefined ? undefined : QUESTIONS[questionIndex];
   const total = results.reduce((sum, r) => sum + r.points, 0);
@@ -45,7 +46,7 @@ function Game() {
     const match = drawMatch(QUESTIONS.length, deck.current, previousMatch.current);
     deck.current = match.remaining;
     previousMatch.current = match.order;
-    setOrder(match.order); setResults([]); setRevealed(null); setInput(""); setIdx(0);
+    setOrder(match.order); setResults([]); setRevealed(null); setNotFound(null); setInput(""); setIdx(0);
   }, []);
   const beginTraining = () => transition(start);
   const playAgain = () => transition(() => setIdx(-1));
@@ -57,9 +58,11 @@ function Game() {
   };
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) reveal(input);
+    if (!input.trim() || !q) return;
+    if (!findAnswer(q, input)) { setNotFound(input.trim()); setInput(""); return; }
+    setNotFound(null); reveal(input);
   };
-  const next = () => transition(() => { setRevealed(null); setInput(""); setIdx(i => i + 1); });
+  const next = () => transition(() => { setRevealed(null); setNotFound(null); setInput(""); setIdx(i => i + 1); });
 
   return <main className={`game-world flex flex-col px-5 pb-5 pt-9 sm:px-10 ${revealed ? "zap" : ""}`}>
     <PixelPitch />
