@@ -21,7 +21,7 @@ export const rateAnswerWithAi = createServerFn({ method: "POST" })
         model: provider.responses("openai/gpt-6-astra"),
         system:
           "You judge answers in a football trivia game. Decide if the typed name is a real professional footballer who fits the question (allow small typos and surname-only answers if unambiguous). " +
-          "Rate rarity from 1 to 100: 1 = the single most common answer fans would give, 100 = only the most obscure players (the rarest ~20 possible answers). " +
+          "Rate rarity from 1 to 100: 1 = the single most common answer fans would give, use the full range smoothly; the 5 most common answers = 1, the 5 rarest possible answers = 100. " +
           'Reply ONLY with JSON: {"valid":boolean,"name":"full canonical name","points":integer 1-100,"reason":"short English reason"}.',
         prompt: `Question: ${data.prompt}\nTyped answer: ${data.name}`,
         providerOptions: { openai: { store: false, forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] } },
