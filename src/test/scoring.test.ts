@@ -42,9 +42,11 @@ describe("expanded player archive", () => {
 });
 
 describe("1-100 rarity scale", () => {
-  const sorted = [...q.answers].sort((a, b) => b.pct - a.pct);
-  it("most common answer scores 1", () => { expect(scoreFor(sorted[0])).toBe(1); });
-  it("the 20 least common answers score 100", () => {
-    for (const a of sorted.slice(-20)) expect(scoreFor(a)).toBe(100);
+  const sorted = [...q.answers].sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+  it("the 5 most common answers score 1", () => { for (const a of sorted.slice(0, 5)) expect(scoreFor(a)).toBe(1); });
+  it("the 5 least common answers score 100", () => { for (const a of sorted.slice(-5)) expect(scoreFor(a)).toBe(100); });
+  it("uses every value in between", () => {
+    const points = new Set(sorted.map(scoreFor));
+    for (let p = 1; p <= 100; p++) expect(points.has(p)).toBe(true);
   });
 });

@@ -242,25 +242,22 @@ export function findAnswer(q: Question, input: string): Answer | undefined {
   return surname.length === 1 ? surname[0] : undefined;
 }
 
-/** Number of least-common answers per question that score the full 100. */
-export const TOP_RARE = 20;
+/** Answers at each end of the scale: the 5 most common score 1, the 5 least common score 100. */
+export const EDGE_ANSWERS = 5;
 const scoreCache = new WeakMap<Answer, number>();
 
-/** Rank-based 1–100 within a question: most common answer = 1, the 20 least common = 100, wrong = 0. */
+/** Rank-based 1–100 within a question, sliding smoothly through every value in between; wrong = 0. */
 export function scoreFor(x: Answer | undefined): number {
   if (!x) return 0;
   const cached = scoreCache.get(x);
   if (cached !== undefined) return cached;
   const q = QUESTIONS.find(question => question.answers.includes(x));
   if (!q) return 1;
-  const sorted = [...q.answers].sort((a, b) => b.pct - a.pct);
-  const cutoff = Math.max(1, sorted.length - TOP_RARE);
+  const sorted = [...q.answers].sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+  const first = EDGE_ANSWERS - 1, last = sorted.length - EDGE_ANSWERS;
   sorted.forEach((answer, i) => {
-    // Ties share the rarest position of their group.
-    let last = i;
-    while (last + 1 < sorted.length && sorted[last + 1]!.pct === answer.pct) last++;
-    const points = i === 0 && last === 0 ? 1 : last >= cutoff ? MAX_POINTS : Math.max(1, Math.round(1 + (99 * last) / cutoff));
-    scoreCache.set(answer, Math.min(MAX_POINTS, points));
+    const points = i <= first ? 1 : i >= last ? MAX_POINTS : Math.round(1 + (99 * (i - first)) / Math.max(1, last - first));
+    scoreCache.set(answer, Math.min(MAX_POINTS, Math.max(1, points)));
   });
   return scoreCache.get(x) ?? 1;
 }
