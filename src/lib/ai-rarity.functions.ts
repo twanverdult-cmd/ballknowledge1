@@ -7,7 +7,7 @@ export type AiVerdict = { valid: boolean; name: string; points: number; reason: 
 export const rateAnswerWithAi = createServerFn({ method: "POST" })
   .inputValidator(z.object({ prompt: z.string().min(1).max(200), name: z.string().min(1).max(80) }))
   .handler(async ({ data }): Promise<AiVerdict | { error: string }> => {
-    const apiKey = process.env.LOVABLE_API_KEY;
+    const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) return { error: "AI is not configured." };
     const { createOpenAI } = await import("@ai-sdk/openai");
     const { streamText } = await import("ai");
