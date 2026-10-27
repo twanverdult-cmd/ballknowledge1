@@ -9,24 +9,25 @@ export const rateAnswerWithAi = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<AiVerdict | { error: string }> => {
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (!apiKey) return { error: "AI is not configured." };
-    const { createOpenAI } = await import("@ai-sdk/openai");
-    const { streamText } = await import("ai");
-    const provider = createOpenAI({
-      baseURL: "https://ai.gateway.lovable.dev/v1",
-      apiKey,
-      headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
-    });
     try {
-      const result = streamText({
-        model: provider.responses("openai/gpt-6-astra"),
-        system:
-          "You judge answers in a football trivia game. Decide if the typed name is a real professional footballer who fits the question (allow small typos and surname-only answers if unambiguous). " +
-          "Rate rarity from 1 to 100: 1 = the single most common answer fans would give, use the full range smoothly; the 5 most common answers = 1, the 5 rarest possible answers = 100. " +
-          'Reply ONLY with JSON: {"valid":boolean,"name":"full canonical name","points":integer 1-100,"reason":"short English reason"}.',
-        prompt: `Question: ${data.prompt}\nTyped answer: ${data.name}`,
-        providerOptions: { openai: { store: false, forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", include: ["reasoning.encrypted_content"] } },
+      // Fast lightweight model so the VAR check answers in about a second.
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json", "X-Lovable-AIG-SDK": "fetch" },
+        body: JSON.stringify({
+          model: "google/gemini-3.1-flash-lite",
+          messages: [
+            { role: "system", content:
+              "You judge answers in a football trivia game. Decide if the typed name is a real professional footballer who fits the question (allow small typos and surname-only answers if unambiguous). " +
+              "Rate rarity from 1 to 100: 1 = the single most common answer fans would give, use the full range smoothly; the 5 most common answers = 1, the 5 rarest possible answers = 100. " +
+              'Reply ONLY with JSON: {"valid":boolean,"name":"full canonical name","points":integer 1-100,"reason":"short English reason"}.' },
+            { role: "user", content: `Question: ${data.prompt}\nTyped answer: ${data.name}` },
+          ],
+        }),
       });
-      const text = await result.text;
+      if (!res.ok) throw Object.assign(new Error(`AI ${res.status}`), { statusCode: res.status });
+      const body = await res.json() as { choices?: { message?: { content?: string } }[] };
+      const text = body.choices?.[0]?.message?.content ?? "";
       const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
       const points = Math.max(1, Math.min(100, Math.round(Number(json.points) || 1)));
       return { valid: Boolean(json.valid), name: String(json.name || data.name).slice(0, 80), points, reason: String(json.reason || "").slice(0, 200) };
